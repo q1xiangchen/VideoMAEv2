@@ -26,7 +26,7 @@ def build_pretraining_dataset(args):
         modality='rgb',
         num_segments=1,
         num_crop=1,
-        new_length=args.num_frames,
+        new_length=args.num_frames if "baseline" in args.motion_layer else args.num_frames+1,
         new_step=args.sampling_rate,
         transform=transform,
         temporal_jitter=False,

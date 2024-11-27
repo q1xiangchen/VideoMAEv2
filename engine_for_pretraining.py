@@ -74,6 +74,9 @@ def train_one_epoch(model: torch.nn.Module,
                                                                    None]
             unnorm_images = images * std + mean  # in [0, 1]
 
+            if unnorm_images.shape[2] % patch_size != 0:
+                unnorm_images = unnorm_images[:, :, 1:, :, :]
+
             if normlize_target:
                 images_squeeze = rearrange(
                     unnorm_images,
@@ -98,19 +101,19 @@ def train_one_epoch(model: torch.nn.Module,
             labels = images_patch[~decode_masked_pos].reshape(B, -1, C)
 
         if loss_scaler is None:
-            outputs = model(images, bool_masked_pos, decode_masked_pos)
+            outputs, layer_loss = model(images, bool_masked_pos, decode_masked_pos)
             loss = (outputs - labels)**2
             loss = loss.mean(dim=-1)
             cal_loss_mask = bool_masked_pos[~decode_masked_pos].reshape(B, -1)
-            loss = (loss * cal_loss_mask).sum() / cal_loss_mask.sum()
+            loss = (loss * cal_loss_mask).sum() / cal_loss_mask.sum() + layer_loss
         else:
             with torch.cuda.amp.autocast():
-                outputs = model(images, bool_masked_pos, decode_masked_pos)
+                outputs, layer_loss = model(images, bool_masked_pos, decode_masked_pos)
                 loss = (outputs - labels)**2
                 loss = loss.mean(dim=-1)
                 cal_loss_mask = bool_masked_pos[~decode_masked_pos].reshape(
                     B, -1)
-                loss = (loss * cal_loss_mask).sum() / cal_loss_mask.sum()
+                loss = (loss * cal_loss_mask).sum() / cal_loss_mask.sum() + layer_loss
 
         loss_value = loss.item()
 

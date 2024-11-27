@@ -12,6 +12,7 @@ import torch.nn as nn
 import torch.utils.checkpoint as cp
 from timm.models.layers import trunc_normal_ as __call_trunc_normal_
 from timm.models.registry import register_model
+from .motion_modulation import MotionLayer
 
 from .modeling_finetune import (
     Block,
@@ -268,6 +269,7 @@ class PretrainVisionTransformer(nn.Module):
         with_cp=False,
         all_frames=16,
         cos_attn=False,
+        motion_layer="baseline",
     ):
         super().__init__()
         self.encoder = PretrainVisionTransformerEncoder(
@@ -321,6 +323,11 @@ class PretrainVisionTransformer(nn.Module):
 
         trunc_normal_(self.mask_token, std=.02)
 
+        # print("-"*30," motion_layer: ", motion_layer)
+        self.motion_layer = None
+        if motion_layer != "baseline":
+            self.motion_layer = MotionLayer()
+
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
             nn.init.xavier_uniform_(m.weight)
@@ -340,6 +347,10 @@ class PretrainVisionTransformer(nn.Module):
     def forward(self, x, mask, decode_mask=None):
         decode_vis = mask if decode_mask is None else ~decode_mask
 
+        layer_loss = 0
+        if self.motion_layer is not None:
+            x, layer_loss = self.motion_layer(x)
+
         x_vis = self.encoder(x, mask)  # [B, N_vis, C_e]
         x_vis = self.encoder_to_decoder(x_vis)  # [B, N_vis, C_d]
         B, N_vis, C = x_vis.shape
@@ -357,7 +368,7 @@ class PretrainVisionTransformer(nn.Module):
         # NOTE: if N_mask==0, the shape of x is [B, N_mask, 3 * 16 * 16]
         x = self.decoder(x_full, pos_emd_mask.shape[1])
 
-        return x
+        return x, layer_loss
 
 
 @register_model

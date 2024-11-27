@@ -37,6 +37,7 @@ def get_args():
     parser.add_argument('--batch_size', default=64, type=int)
     parser.add_argument('--epochs', default=300, type=int)
     parser.add_argument('--save_ckpt_freq', default=50, type=int)
+    parser.add_argument('--motion_layer', default="baseline", type=str)
 
     # Model parameters
     parser.add_argument(
@@ -262,7 +263,8 @@ def get_model(args):
         all_frames=args.num_frames,
         tubelet_size=args.tubelet_size,
         decoder_depth=args.decoder_depth,
-        with_cp=args.with_checkpoint)
+        with_cp=args.with_checkpoint,
+        motion_layer=args.motion_layer)
 
     if version.parse(torch.__version__) > version.parse('1.13.1'):
         torch.set_float32_matmul_precision('high')
