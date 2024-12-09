@@ -52,6 +52,7 @@ def get_args():
     parser.add_argument('--epochs', default=30, type=int)
     parser.add_argument('--update_freq', default=1, type=int)
     parser.add_argument('--save_ckpt_freq', default=100, type=int)
+    parser.add_argument('--motion_layer', default="baseline", type=str)
 
     # Model parameters
     parser.add_argument(
@@ -420,6 +421,7 @@ def main(args, ds_init):
     random.seed(seed)
     cudnn.benchmark = True
 
+    #TODO: check data annotation path
     dataset_train, args.nb_classes = build_dataset(
         is_train=True, test_mode=False, args=args)
     if args.disable_eval_during_finetuning:
@@ -527,6 +529,7 @@ def main(args, ds_init):
         use_mean_pooling=args.use_mean_pooling,
         init_scale=args.init_scale,
         with_cp=args.with_checkpoint,
+        motion_layer=args.motion_layer,
     )
 
     patch_size = model.patch_embed.patch_size
@@ -539,6 +542,7 @@ def main(args, ds_init):
     args.patch_size = patch_size
 
     if args.finetune:
+    # if False:
         if args.finetune.startswith('https'):
             checkpoint = torch.hub.load_state_dict_from_url(
                 args.finetune, map_location='cpu', check_hash=True)

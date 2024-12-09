@@ -14,6 +14,7 @@ import torch.nn.functional as F
 import torch.utils.checkpoint as cp
 from timm.models.layers import drop_path, to_2tuple, trunc_normal_
 from timm.models.registry import register_model
+from .motion_modulation import MotionLayer
 
 
 def _cfg(url='', **kwargs):
@@ -345,7 +346,9 @@ class VisionTransformer(nn.Module):
                  tubelet_size=2,
                  use_mean_pooling=True,
                  with_cp=False,
-                 cos_attn=False):
+                 cos_attn=False,
+                 motion_layer="baseline",
+                 ):
         super().__init__()
         self.num_classes = num_classes
         # num_features for consistency with other models
@@ -402,6 +405,11 @@ class VisionTransformer(nn.Module):
         self.head.weight.data.mul_(init_scale)
         self.head.bias.data.mul_(init_scale)
 
+        #NOTE: Initialize motion layer
+        self.motion_layer = None
+        if motion_layer != "baseline":
+            self.motion_layer = MotionLayer()
+
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
             trunc_normal_(m.weight, std=.02)
@@ -448,10 +456,18 @@ class VisionTransformer(nn.Module):
             return self.norm(x[:, 0])
 
     def forward(self, x):
+        layer_loss = 0
+        if self.motion_layer is not None:
+            x, layer_loss = self.motion_layer(x)
+
         x = self.forward_features(x)
         x = self.head_dropout(x)
         x = self.head(x)
-        return x
+
+        if self.training:
+            return x, layer_loss
+        else:
+            return x
 
 
 @register_model

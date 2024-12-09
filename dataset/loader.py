@@ -53,7 +53,7 @@ def get_video_loader(use_petrel_backend: bool = True,
     else:
         _client = None
 
-    def _loader(video_path, dataset_path="k700-2020/k700_2020_train.h5"):
+    def _loader(video_path, dataset_path="data/hmdb51_1/HMDB51_split1.h5"):
         # if _client is not None and 's3:' in video_path:
         #     video_path = io.BytesIO(_client.get(video_path))
 
@@ -75,12 +75,16 @@ def get_image_loader(use_petrel_backend: bool = True,
     else:
         _client = None
 
-    def _loader(frame_path):
-        if _client is not None and 's3:' in frame_path:
-            img_bytes = _client.get(frame_path)
-        else:
-            with open(frame_path, 'rb') as f:
-                img_bytes = f.read()
+    def _loader(frame_path, dataset_path="sthsthv2/sthsthv2.h5"):
+        # if _client is not None and 's3:' in frame_path:
+        #     img_bytes = _client.get(frame_path)
+        # else:
+        #     with open(frame_path, 'rb') as f:
+        #         img_bytes = f.read()
+
+        #NOTE: read image from h5 file
+        video_binary = load_h5_file(dataset_path, frame_path)
+        img_bytes = io.BytesIO(video_binary)
 
         img_np = np.frombuffer(img_bytes, np.uint8)
         img = cv2.imdecode(img_np, cv2.IMREAD_COLOR)

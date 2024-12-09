@@ -99,7 +99,7 @@ class MotionLayer(torch.nn.Module):
 
         height_window = reciprocal_auto(self.h, H)
         width_window = reciprocal_auto(self.w, W)
-        temporal_window = reciprocal_auto(self.t, T)
+        temporal_window = reciprocal_auto(self.t, T - 1)
 
         # if self.visual:
         #     wandb.log({
@@ -230,7 +230,7 @@ class temporal_smoothing(torch.autograd.Function):
     def forward(ctx, input, window_size):
         ctx.window_size = window_size
         window_low, window_high, window_low_weight, window_high_weight = closest_odd_numbers(window_size)
-        assert window_high <= input.shape[0] or window_high_weight < 1e-6, f"Window size must be less than or equal to the input size: {window_high} with weight {window_high_weight} vs {input.shape[0]}"
+        assert window_high <= input.shape[0]+1 or window_high_weight < 1e-6, f"Window size must be less than or equal to the input size: {window_high} with weight {window_high_weight} vs {input.shape[0]}"
 
         # zero padding for the input
         pad_low = (window_low - 1).div(2, rounding_mode='floor').int().item()

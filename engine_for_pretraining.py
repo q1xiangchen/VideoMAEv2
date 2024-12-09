@@ -74,7 +74,7 @@ def train_one_epoch(model: torch.nn.Module,
                                                                    None]
             unnorm_images = images * std + mean  # in [0, 1]
 
-            if unnorm_images.shape[2] % patch_size != 0:
+            if unnorm_images.shape[2] == 17:
                 unnorm_images = unnorm_images[:, :, 1:, :, :]
 
             if normlize_target:

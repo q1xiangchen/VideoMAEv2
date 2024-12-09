@@ -21,8 +21,8 @@ import utils
 
 
 def train_class_batch(model, samples, target, criterion):
-    outputs = model(samples)
-    loss = criterion(outputs, target)
+    outputs, layer_loss = model(samples)
+    loss = criterion(outputs, target) + layer_loss
     return loss, outputs
 
 

@@ -144,5 +144,8 @@ cython_debug/
 
 # others
 work_dir/
+work_dir_rand/
+model_zoo/
 data/
 k700-2020
+sthsthv2
