@@ -51,4 +51,4 @@ torchrun --nproc_per_node=${GPUS_PER_NODE} \
         --dist_eval  \
         --enable_deepspeed  \
         --model_key state_dict \
-         \
+        --end_to_end \

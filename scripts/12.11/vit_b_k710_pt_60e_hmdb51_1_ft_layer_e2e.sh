@@ -50,4 +50,4 @@ torchrun --nproc_per_node=${GPUS_PER_NODE} \
         --motion_layer finetune_w_layer \
         --dist_eval  \
         --enable_deepspeed  \
-         \
+        --end_to_end \

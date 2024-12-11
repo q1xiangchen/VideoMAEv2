@@ -87,7 +87,7 @@ torchrun --nproc_per_node=${{GPUS_PER_NODE}} \\
         --test_num_segment {test_num_segment} \\
         --test_num_crop {test_num_crop} \\
         --motion_layer {motion_layer} \\
-        --end_to_end {end_to_end} \\
+        {"--end_to_end " if end_to_end else ""} \\
         {"--dist_eval " if dist_eval else ""} \\
         {"--enable_deepspeed " if enable_deepspeed else ""} \\
         {extra_args} \\
@@ -107,7 +107,7 @@ def job_script(config_path, save_path):
 #PBS -l mem=380GB
 #PBS -q gpuvolta
 #PBS -l jobfs=32GB
-#PBS -l walltime=12:00:00
+#PBS -l walltime=08:00:00
 #PBS -l wd
 #PBS -l storage=scratch/dg97+scratch/kf09+gdata/kf09
 
@@ -127,7 +127,7 @@ bash {config_path}
     print(f"{'Job script saved at':<25}{save_path}")
 
 if __name__ == "__main__":
-    for pretrain_epochs in [60, 100]:
+    for pretrain_epochs in [60]:
         for finetune_split in [1]:
             vit_model = "vit_b"
 
@@ -138,8 +138,9 @@ if __name__ == "__main__":
             # pretrain_dataset = "hybrid"
             
             finetune_dataset = "hmdb51"
-            motion_layer = "finetune_w_layer"
-            end_to_end = True
+            # motion_layer = "finetune_w_layer"
+            motion_layer = "pretrain_w_layer"
+            end_to_end = False
             
             pth_name = f"{vit_model}_{pretrain_dataset}_pt_{pretrain_epochs}e"
             pth_name += "_w_layer" if motion_layer == "pretrain_w_layer" else ""
@@ -157,7 +158,7 @@ if __name__ == "__main__":
                 model_path=model_path,
                 job_name=job_name,
                 model_name=model_name,
-                batch_size=2 if vit_model == "vit_b" else 1,
+                batch_size=4 if vit_model == "vit_b" else 1,
                 motion_layer=motion_layer,
                 end_to_end=end_to_end,
             )
@@ -168,8 +169,9 @@ if __name__ == "__main__":
             )
 
             print(f"{'  Job status  ':*^45}")
-            print('{:>20}'.format("Pretrain model:"), f"{vit_model}_{pretrain_dataset}_pt_{pretrain_epochs}e.pth")
+            print('{:>20}'.format("Pretrain model:"), f"{pth_name}")
             print('{:>20}'.format("Finetune dataset:"), f"{finetune_dataset}_{finetune_split}")
+            print('{:>20}'.format("Motion layer:"), f"{motion_layer}")
             print('*' * 45)
             input("Press Enter to submit the job")
 

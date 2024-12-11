@@ -465,11 +465,8 @@ class VisionTransformer(nn.Module):
 
     def forward(self, x):
         layer_loss = 0
-        # check the data type of x
         if self.motion_layer is not None:
             x, layer_loss = self.motion_layer(x)
-            if x.dtype != torch.float16:
-                x = x.half()
 
         x = self.forward_features(x)
         x = self.head_dropout(x)

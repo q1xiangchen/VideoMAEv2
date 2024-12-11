@@ -4,20 +4,17 @@ import torch.nn as nn
 
 def round_tensor(x, decimals=0):
     scale = 10 ** decimals
-    x = x.float()
     result = torch.round(x * scale) / scale
-    #return to torch.float16
-    return result.to(dtype=torch.bfloat16)
+    return result
 
 
 def closest_odd_numbers(num):
-    num = round_tensor(num, decimals=3)
+    num = round_tensor(num, decimals=1)
     assert num >= 1, "Number must be greater than or equal to 1, num = " + str(num)
     base = torch.floor(num).int().item()
 
     lower = base if base % 2 != 0 else base - 1
-    num_temp = num.to(dtype=torch.bfloat16)
-    lower = torch.where(base <= num_temp, lower, lower - 2)
+    lower = torch.where(base <= num, lower, lower - 2)
     higher = lower + 2
 
     higher_weight = (num - lower) / 2
@@ -66,18 +63,22 @@ class MotionLayer(torch.nn.Module):
     def forward(self, video_seq):
         video_seq = rearrange_tensor(video_seq, self.input_permutation)
         loss = 0
+        print("video_seq", video_seq.dtype)
         
         # normalize the input tensor back to [0, 1]
         norm_seq = video_seq * torch.tensor(self.input_std).view(1, 1, 3, 1, 1).to(video_seq.device) + torch.tensor(self.input_mean).view(1, 1, 3, 1, 1).to(video_seq.device)
-        
+        print("norm_seq", norm_seq.dtype)
+
         # transfor the input tensor to grayscale 
         weights = torch.tensor([self.gray_scale[idx] for idx in self.input_color_order], 
                                dtype=norm_seq.dtype, device=norm_seq.device)
         grayscale_video_seq = torch.einsum("btcwh, c -> btwh", norm_seq, weights)
+        print("grayscale_video_seq", grayscale_video_seq.dtype)
 
         ### frame difference ###
         B, T, H, W = grayscale_video_seq.shape
         frame_diff = grayscale_video_seq[:,1:] - grayscale_video_seq[:,:-1]
+        print("frame_diff", frame_diff.dtype)
 
         ### check if 0 difference, if so duplicate the last non-zero frame difference ###
         zero_diff = torch.sum(frame_diff == 0.0, dim=(2, 3))
@@ -90,6 +91,7 @@ class MotionLayer(torch.nn.Module):
 
         ### power normalization ###
         norm_attention = attention_map(frame_diff, self.m, self.n).unsqueeze(2)
+        print("norm_attention", norm_attention.dtype)
 
         ### frame summations / counts ###
         sum_h = torch.sum(frame_diff, dim=2)
@@ -109,6 +111,8 @@ class MotionLayer(torch.nn.Module):
         for i in range(B):
             smoothed_ratio_h[i] = spatial_smoothing.apply(ratio_h[i].unsqueeze(1), height_window).squeeze(1)
             smoothed_ratio_w[i] = spatial_smoothing.apply(ratio_w[i].unsqueeze(1), width_window).squeeze(1)
+        print("smoothed_ratio_h", smoothed_ratio_h.dtype)
+
 
         ### outer product (local attention map) ###
         outer_product = torch.einsum("bth, btw -> bthw", smoothed_ratio_w, smoothed_ratio_h)
@@ -121,6 +125,7 @@ class MotionLayer(torch.nn.Module):
         ### power normalization ###
         norm_attention = attention_map(smoothed_outers, self.m, self.n).unsqueeze(2)
         pad_norm_attention = norm_attention.repeat(1, 1, 3, 1, 1)
+        print("pad_norm_attention", pad_norm_attention.dtype)
 
         return reverse_rearrange_tensor((pad_norm_attention * video_seq[:,1:]), self.input_permutation), loss
 
