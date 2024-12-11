@@ -149,3 +149,6 @@ model_zoo/
 data/
 k700-2020
 sthsthv2
+scripts/auto*
+scripts/job*
+scripts/ours

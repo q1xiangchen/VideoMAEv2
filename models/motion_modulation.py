@@ -4,7 +4,10 @@ import torch.nn as nn
 
 def round_tensor(x, decimals=0):
     scale = 10 ** decimals
-    return torch.round(x * scale) / scale
+    x = x.float()
+    result = torch.round(x * scale) / scale
+    #return to torch.float16
+    return result.to(dtype=torch.bfloat16)
 
 
 def closest_odd_numbers(num):
@@ -13,7 +16,8 @@ def closest_odd_numbers(num):
     base = torch.floor(num).int().item()
 
     lower = base if base % 2 != 0 else base - 1
-    lower = torch.where(base <= num, lower, lower - 2)
+    num_temp = num.to(dtype=torch.bfloat16)
+    lower = torch.where(base <= num_temp, lower, lower - 2)
     higher = lower + 2
 
     higher_weight = (num - lower) / 2
@@ -92,23 +96,12 @@ class MotionLayer(torch.nn.Module):
         sum_w = torch.sum(frame_diff, dim=3)
         count_h = torch.count_nonzero(frame_diff, dim=2)
         count_w = torch.count_nonzero(frame_diff, dim=3)
-        # count_h = torch.sum(frame_diff != 0.5, dim=2)
-        # count_w = torch.sum(frame_diff != 0.5, dim=3)
         ratio_h = sum_h / (count_h + 1e-6)
         ratio_w = sum_w / (count_w + 1e-6)
 
         height_window = reciprocal_auto(self.h, H)
         width_window = reciprocal_auto(self.w, W)
         temporal_window = reciprocal_auto(self.t, T - 1)
-
-        # if self.visual:
-        #     wandb.log({
-        #         "height_window": height_window.data[0].item(),
-        #         "width_window": width_window.data[0].item(),
-        #         "temporal_window": temporal_window.data[0].item(),
-        #         "m": self.m.data[0].item(),
-        #         "n": self.n.data[0].item()
-        #     })
 
         ### spatial smoothing ###
         smoothed_ratio_h = torch.zeros_like(ratio_h, device=ratio_h.device)
@@ -118,42 +111,16 @@ class MotionLayer(torch.nn.Module):
             smoothed_ratio_w[i] = spatial_smoothing.apply(ratio_w[i].unsqueeze(1), width_window).squeeze(1)
 
         ### outer product (local attention map) ###
-        outer_product = torch.einsum("bth, btw -> bthw", smoothed_ratio_w, smoothed_ratio_h)\
+        outer_product = torch.einsum("bth, btw -> bthw", smoothed_ratio_w, smoothed_ratio_h)
 
         ### temporal smoothing ###
         smoothed_outers = torch.zeros_like(outer_product, device=outer_product.device)
         for i in range(B):
             smoothed_outers[i] = temporal_smoothing.apply(outer_product[i].unsqueeze(1), temporal_window).squeeze(1)
 
-        # ### window max ###
-        # norm_outers = torch.zeros_like(smoothed_outers, device=smoothed_outers.device)
-        # for j in range(B):
-        #     outer_diff = smoothed_outers[j].unsqueeze(1)
-        #     padding = torch.cat([outer_diff[0].repeat(int(temporal_window)-1, 1, 1, 1), outer_diff], dim=0)
-        #     result = torch.zeros(T-1, 1).to(video_seq.device)
-        #     for i in range(T-1):
-        #         local_max, _ = torch.max(padding[i:i+int(temporal_window)].view(int(temporal_window), 1, -1), dim=-1)
-        #         result[i] = torch.max(local_max, dim=0).values
-        #     norm_outers[j] = (outer_diff / (result[:, :, None, None] + 1e-6)).squeeze(1)
-            
         ### power normalization ###
         norm_attention = attention_map(smoothed_outers, self.m, self.n).unsqueeze(2)
         pad_norm_attention = norm_attention.repeat(1, 1, 3, 1, 1)
-
-        # if torch.is_grad_enabled():
-        #     temp_diff = norm_attention[:, 1:] - norm_attention[:, :-1]
-        #     temporal_loss = torch.sum(temp_diff.pow(2)) / (H*W*(T-2)*B)
-        #     loss = self.lambda1 * temporal_loss
-        #     if self.visual:
-        #         wandb.log({
-        #             "temporal_loss": loss
-        #         })
-
-        # if self.visual:
-        #     wandb.log({
-        #     "self.a.mean": self.a.data[0].mean(), "self.a.std": self.a.data[0].std(), 
-        #     "self.b.mean": self.b.data[0].mean(), "self.b.std": self.b.data[0].std()
-        #     })
 
         return reverse_rearrange_tensor((pad_norm_attention * video_seq[:,1:]), self.input_permutation), loss
 

@@ -348,6 +348,7 @@ class VisionTransformer(nn.Module):
                  with_cp=False,
                  cos_attn=False,
                  motion_layer="baseline",
+                 end_to_end=True,
                  ):
         super().__init__()
         self.num_classes = num_classes
@@ -410,6 +411,13 @@ class VisionTransformer(nn.Module):
         if motion_layer != "baseline":
             self.motion_layer = MotionLayer()
 
+        # freeze the backbone excapt the last layer
+        if not end_to_end:
+            for param in self.parameters():
+                param.requires_grad = False
+            for param in self.head.parameters():
+                param.requires_grad = True
+
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
             trunc_normal_(m.weight, std=.02)
@@ -457,8 +465,11 @@ class VisionTransformer(nn.Module):
 
     def forward(self, x):
         layer_loss = 0
+        # check the data type of x
         if self.motion_layer is not None:
             x, layer_loss = self.motion_layer(x)
+            if x.dtype != torch.float16:
+                x = x.half()
 
         x = self.forward_features(x)
         x = self.head_dropout(x)

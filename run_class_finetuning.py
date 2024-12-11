@@ -53,6 +53,7 @@ def get_args():
     parser.add_argument('--update_freq', default=1, type=int)
     parser.add_argument('--save_ckpt_freq', default=100, type=int)
     parser.add_argument('--motion_layer', default="baseline", type=str)
+    parser.add_argument('--end_to_end', action='store_true', default=True)
 
     # Model parameters
     parser.add_argument(
@@ -282,7 +283,7 @@ def get_args():
     # * Finetuning params
     parser.add_argument(
         '--finetune', default='', help='finetune from checkpoint')
-    parser.add_argument('--model_key', default='model|module', type=str)
+    parser.add_argument('--model_key', default='model|module|state_dict', type=str)
     parser.add_argument('--model_prefix', default='', type=str)
     parser.add_argument('--init_scale', default=0.001, type=float)
     parser.add_argument('--use_mean_pooling', action='store_true')
