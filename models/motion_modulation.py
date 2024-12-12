@@ -42,13 +42,12 @@ def reverse_rearrange_tensor(input_tensor, order):
 
 
 class MotionLayer(torch.nn.Module):
-    def __init__(self, exp_name = "", test=False):
+    def __init__(self, exp_name = "", penalty_weight=1.0):
         super(MotionLayer, self).__init__()
         # default configs
         self.input_permutation = "BCTHW"   # Input format from video reader
         self.input_color_order = "RGB"     # Input format from video reader
         self.gray_scale = {"B": 0.114, "G": 0.587, "R": 0.299}
-        self.visual = test
 
         self.h = nn.Parameter(torch.zeros(1))
         self.w = nn.Parameter(torch.zeros(1))
@@ -63,22 +62,21 @@ class MotionLayer(torch.nn.Module):
     def forward(self, video_seq):
         video_seq = rearrange_tensor(video_seq, self.input_permutation)
         loss = 0
-        print("video_seq", video_seq.dtype)
         
         # normalize the input tensor back to [0, 1]
-        norm_seq = video_seq * torch.tensor(self.input_std).view(1, 1, 3, 1, 1).to(video_seq.device) + torch.tensor(self.input_mean).view(1, 1, 3, 1, 1).to(video_seq.device)
-        print("norm_seq", norm_seq.dtype)
+        input_std = torch.tensor(self.input_std).view(1, 1, 3, 1, 1).to(video_seq.device).to(video_seq.dtype)
+        input_mean = torch.tensor(self.input_mean).view(1, 1, 3, 1, 1).to(video_seq.device).to(video_seq.dtype)
+        norm_seq = video_seq * input_std + input_mean
 
         # transfor the input tensor to grayscale 
         weights = torch.tensor([self.gray_scale[idx] for idx in self.input_color_order], 
                                dtype=norm_seq.dtype, device=norm_seq.device)
         grayscale_video_seq = torch.einsum("btcwh, c -> btwh", norm_seq, weights)
-        print("grayscale_video_seq", grayscale_video_seq.dtype)
 
         ### frame difference ###
         B, T, H, W = grayscale_video_seq.shape
         frame_diff = grayscale_video_seq[:,1:] - grayscale_video_seq[:,:-1]
-        print("frame_diff", frame_diff.dtype)
+        # frame_diff = torch.abs(frame_diff)
 
         ### check if 0 difference, if so duplicate the last non-zero frame difference ###
         zero_diff = torch.sum(frame_diff == 0.0, dim=(2, 3))
@@ -90,16 +88,15 @@ class MotionLayer(torch.nn.Module):
                     frame_diff[i, j] = frame_diff[i, j - 1]
 
         ### power normalization ###
-        norm_attention = attention_map(frame_diff, self.m, self.n).unsqueeze(2)
-        print("norm_attention", norm_attention.dtype)
+        # norm_attention = attention_map(frame_diff, self.m_1, self.n_1)
 
         ### frame summations / counts ###
         sum_h = torch.sum(frame_diff, dim=2)
         sum_w = torch.sum(frame_diff, dim=3)
         count_h = torch.count_nonzero(frame_diff, dim=2)
         count_w = torch.count_nonzero(frame_diff, dim=3)
-        ratio_h = sum_h / (count_h + 1e-6)
-        ratio_w = sum_w / (count_w + 1e-6)
+        ratio_h = sum_h.div(count_h + 1e-6).to(video_seq.dtype)
+        ratio_w = sum_w.div(count_w + 1e-6).to(video_seq.dtype)
 
         height_window = reciprocal_auto(self.h, H)
         width_window = reciprocal_auto(self.w, W)
@@ -111,8 +108,6 @@ class MotionLayer(torch.nn.Module):
         for i in range(B):
             smoothed_ratio_h[i] = spatial_smoothing.apply(ratio_h[i].unsqueeze(1), height_window).squeeze(1)
             smoothed_ratio_w[i] = spatial_smoothing.apply(ratio_w[i].unsqueeze(1), width_window).squeeze(1)
-        print("smoothed_ratio_h", smoothed_ratio_h.dtype)
-
 
         ### outer product (local attention map) ###
         outer_product = torch.einsum("bth, btw -> bthw", smoothed_ratio_w, smoothed_ratio_h)
@@ -124,8 +119,7 @@ class MotionLayer(torch.nn.Module):
 
         ### power normalization ###
         norm_attention = attention_map(smoothed_outers, self.m, self.n).unsqueeze(2)
-        pad_norm_attention = norm_attention.repeat(1, 1, 3, 1, 1)
-        print("pad_norm_attention", pad_norm_attention.dtype)
+        pad_norm_attention = norm_attention.repeat(1, 1, 3, 1, 1)        
 
         return reverse_rearrange_tensor((pad_norm_attention * video_seq[:,1:]), self.input_permutation), loss
 
@@ -141,7 +135,7 @@ def reciprocal_auto(param, bound, slope=100):
     - slope: the slope of the sigmoid function
     """
     slope = 10 if bound <= 32 else slope
-
+    
     window_mapping = (1 - bound) / (1 + torch.exp(-slope * param)) + bound
     return window_mapping
 
@@ -149,7 +143,7 @@ def reciprocal_auto(param, bound, slope=100):
 class spatial_smoothing(torch.autograd.Function):
     @staticmethod
     def forward(ctx, input, window_size):
-        assert window_size <= input.shape[-1], f"Window size must be less than or equal to the input size: {window_size} vs {input.shape[-1]}"
+        # assert window_size <= input.shape[-1], f"Window size must be less than or equal to the input size: {window_size} vs {input.shape[-1]}"
         ctx.window_size = window_size
         window_low, window_high, window_low_weight, window_high_weight = closest_odd_numbers(window_size)
 
@@ -202,7 +196,7 @@ class temporal_smoothing(torch.autograd.Function):
     def forward(ctx, input, window_size):
         ctx.window_size = window_size
         window_low, window_high, window_low_weight, window_high_weight = closest_odd_numbers(window_size)
-        assert window_high <= input.shape[0]+1 or window_high_weight < 1e-6, f"Window size must be less than or equal to the input size: {window_high} with weight {window_high_weight} vs {input.shape[0]}"
+        # assert window_high <= input.shape[0]+1 or window_high_weight < 1e-6, f"Window size must be less than or equal to the input size: {window_high} with weight {window_high_weight} vs {input.shape[0]}"
 
         # zero padding for the input
         pad_low = (window_low - 1).div(2, rounding_mode='floor').int().item()

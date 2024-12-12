@@ -15,6 +15,7 @@ import torch.utils.checkpoint as cp
 from timm.models.layers import drop_path, to_2tuple, trunc_normal_
 from timm.models.registry import register_model
 from .motion_modulation import MotionLayer
+from .motion_pn import MotionPnLayer
 
 
 def _cfg(url='', **kwargs):
@@ -349,6 +350,7 @@ class VisionTransformer(nn.Module):
                  cos_attn=False,
                  motion_layer="baseline",
                  end_to_end=True,
+                 penalty_weight=1.0
                  ):
         super().__init__()
         self.num_classes = num_classes
@@ -409,7 +411,12 @@ class VisionTransformer(nn.Module):
         #NOTE: Initialize motion layer
         self.motion_layer = None
         if motion_layer != "baseline":
-            self.motion_layer = MotionLayer()
+            if motion_layer == "motion_pn":
+                print("*" * 20, "Using MotionPN layer", "*" * 20)
+                self.motion_layer = MotionPnLayer(penalty_weight)
+            else:
+                print("*" * 20, "Using Motion layer", "*" * 20)
+                self.motion_layer = MotionLayer(motion_layer)
 
         # freeze the backbone excapt the last layer
         if not end_to_end:

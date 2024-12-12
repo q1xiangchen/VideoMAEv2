@@ -94,7 +94,8 @@ def train_one_epoch(model: torch.nn.Module,
             loss, output = train_class_batch(model, samples, targets,
                                              criterion)
         else:
-            with torch.cuda.amp.autocast(dtype=torch.bfloat16):
+            # with torch.cuda.amp.autocast(dtype=torch.bfloat16):
+            with torch.cuda.amp.autocast(dtype=torch.float16):
                 loss, output = train_class_batch(model, samples, targets,
                                                  criterion)
 
