@@ -49,6 +49,5 @@ torchrun --nproc_per_node=${GPUS_PER_NODE} \
         --test_num_crop 3 \
         --motion_layer finetune_w_layer \
         --dist_eval  \
-        --enable_deepspeed  \
         --model_key state_dict \
         --end_to_end \

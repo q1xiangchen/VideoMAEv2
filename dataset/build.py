@@ -169,7 +169,7 @@ def build_dataset(is_train, test_mode, args):
             anno_path=anno_path,
             data_root=args.data_root,
             mode=mode,
-            clip_len=args.num_frames,
+            clip_len=args.num_frames if "baseline" in args.motion_layer else args.num_frames+1,
             frame_sample_rate=args.sampling_rate,
             num_segment=1,
             test_num_segment=args.test_num_segment,

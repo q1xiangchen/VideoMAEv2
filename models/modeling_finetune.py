@@ -16,6 +16,7 @@ from timm.models.layers import drop_path, to_2tuple, trunc_normal_
 from timm.models.registry import register_model
 from .motion_modulation import MotionLayer
 from .motion_pn import MotionPnLayer
+from .motion_raw_prompt import MotionRawLayer
 
 
 def _cfg(url='', **kwargs):
@@ -414,6 +415,9 @@ class VisionTransformer(nn.Module):
             if motion_layer == "motion_pn":
                 print("*" * 20, "Using MotionPN layer", "*" * 20)
                 self.motion_layer = MotionPnLayer(penalty_weight)
+            elif motion_layer == "zero_param":
+                print("*" * 20, "Using ZeroParam layer", "*" * 20)
+                self.motion_layer = MotionRawLayer()
             else:
                 print("*" * 20, "Using Motion layer", "*" * 20)
                 self.motion_layer = MotionLayer(motion_layer)

@@ -152,3 +152,6 @@ sthsthv2
 scripts/auto*
 scripts/job*
 scripts/ours
+scripts/ucf101
+scripts/w_*
+results/*

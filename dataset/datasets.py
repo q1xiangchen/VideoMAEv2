@@ -57,7 +57,7 @@ class VideoClsDataset(Dataset):
             if self.args.reprob > 0:
                 self.rand_erase = True
 
-        self.video_loader = get_video_loader()
+        self.video_loader = get_video_loader(data_root=self.args.data_path)
 
         cleaned = pd.read_csv(self.anno_path, header=None, delimiter=' ')
         self.dataset_samples = list(
@@ -115,7 +115,9 @@ class VideoClsDataset(Dataset):
                     sample = self.dataset_samples[index]
                     buffer = self.load_video(sample, sample_rate_scale=scale_t)
 
+            #NOTE: for our experiments, we only use 1 sample
             if args.num_sample > 1:
+                raise NotImplementedError
                 frame_list = []
                 label_list = []
                 index_list = []
@@ -127,8 +129,10 @@ class VideoClsDataset(Dataset):
                     index_list.append(index)
                 return frame_list, label_list, index_list, {}
             else:
+                # skip the augmentation just apply the normalization
                 buffer = self._aug_frame(buffer, args)
 
+            # exit()
             return buffer, self.label_array[index], index, {}
 
         elif self.mode == 'validation':
@@ -205,15 +209,16 @@ class VideoClsDataset(Dataset):
             raise NameError('mode {} unkown'.format(self.mode))
 
     def _aug_frame(self, buffer, args):
-        aug_transform = video_transforms.create_random_augment(
-            input_size=(self.crop_size, self.crop_size),
-            auto_augment=args.aa,
-            interpolation=args.train_interpolation,
-        )
+        #NOTE: first augment will random normalize the video (not applicable in our case)
+        # aug_transform = video_transforms.create_random_augment(
+        #     input_size=(self.crop_size, self.crop_size),
+        #     auto_augment=args.aa,
+        #     interpolation=args.train_interpolation,
+        # )
 
         buffer = [transforms.ToPILImage()(frame) for frame in buffer]
-
-        buffer = aug_transform(buffer)
+        # buffer = aug_transform(buffer)
+        #NOTE: first augment will random normalize the video (not applicable in our case)
 
         buffer = [transforms.ToTensor()(img) for img in buffer]
         buffer = torch.stack(buffer)  # T C H W
@@ -224,6 +229,8 @@ class VideoClsDataset(Dataset):
                                   [0.229, 0.224, 0.225])
         # T H W C -> C T H W.
         buffer = buffer.permute(3, 0, 1, 2)
+
+        #NOTE: second augment will perform spatial sampling (but maintain the normalization)
         # Perform data augmentation.
         scl, asp = (
             [0.08, 1.0],
@@ -243,17 +250,19 @@ class VideoClsDataset(Dataset):
             scale=scl,
             motion_shift=False)
 
-        if self.rand_erase:
-            erase_transform = RandomErasing(
-                args.reprob,
-                mode=args.remode,
-                max_count=args.recount,
-                num_splits=args.recount,
-                device="cpu",
-            )
-            buffer = buffer.permute(1, 0, 2, 3)  # C T H W -> T C H W
-            buffer = erase_transform(buffer)
-            buffer = buffer.permute(1, 0, 2, 3)  # T C H W -> C T H W
+        #NOTE: third augment will perform random erasing (not applicable in our case)
+        # if self.rand_erase:
+        #     erase_transform = RandomErasing(
+        #         args.reprob,
+        #         mode=args.remode,
+        #         max_count=args.recount,
+        #         num_splits=args.recount,
+        #         device="cpu",
+        #     )
+        #     buffer = buffer.permute(1, 0, 2, 3)  # C T H W -> T C H W
+        #     buffer = erase_transform(buffer)
+        #     buffer = buffer.permute(1, 0, 2, 3)  # T C H W -> C T H W
+        #NOTE: third augment will perform random erasing (not applicable in our case)
 
         return buffer
 
@@ -267,6 +276,7 @@ class VideoClsDataset(Dataset):
             return []
 
         length = len(vr)
+        
 
         if self.mode == 'test':
             if self.sparse_sample:
@@ -297,20 +307,24 @@ class VideoClsDataset(Dataset):
         all_index = []
         for i in range(self.num_segment):
             if seg_len <= converted_len:
-                index = np.linspace(
-                    0, seg_len, num=seg_len // self.frame_sample_rate)
-                index = np.concatenate(
-                    (index,
-                     np.ones(self.clip_len - seg_len // self.frame_sample_rate)
-                     * seg_len))
-                index = np.clip(index, 0, seg_len - 1).astype(np.int64)
+                #NOTE: sample repeating frames (not applicable in our case)
+                # index = np.linspace(
+                #     0, seg_len, num=seg_len // self.frame_sample_rate)
+                # index = np.concatenate(
+                #     (index,
+                #      np.ones(self.clip_len - seg_len // self.frame_sample_rate)
+                #      * seg_len))
+                # index = np.clip(index, 0, seg_len - 1).astype(np.int64)
+
+                # sample non-repeating frames
+                index = np.linspace(0, seg_len - 1, num=self.clip_len).astype(np.int64)
             else:
                 if self.mode == 'validation':
                     end_idx = (converted_len + seg_len) // 2
                 else:
                     end_idx = np.random.randint(converted_len, seg_len)
                 str_idx = end_idx - converted_len
-                index = np.linspace(str_idx, end_idx, num=self.clip_len)
+                index = np.linspace(str_idx, end_idx - 1, num=self.clip_len)
                 index = np.clip(index, str_idx, end_idx - 1).astype(np.int64)
             index = index + i * seg_len
             all_index.extend(list(index))

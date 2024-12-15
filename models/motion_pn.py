@@ -73,13 +73,13 @@ class MotionPnLayer(torch.nn.Module):
         frame_diff = grayscale_video_seq[:,1:] - grayscale_video_seq[:,:-1]
 
         ### check if 0 difference, if so duplicate the last non-zero frame difference ###
-        zero_diff = torch.sum(frame_diff == 0.0, dim=(2, 3))
-        for i in range(B):
-            matching_mask = (zero_diff[i] == H * W)
-            matching_indices = torch.nonzero(matching_mask).flatten()
-            for j in matching_indices:
-                if j > 0:
-                    frame_diff[i, j] = frame_diff[i, j - 1]
+        # zero_diff = torch.sum(frame_diff == 0.0, dim=(2, 3))
+        # for i in range(B):
+        #     matching_mask = (zero_diff[i] == H * W)
+        #     matching_indices = torch.nonzero(matching_mask).flatten()
+        #     for j in matching_indices:
+        #         if j > 0:
+        #             frame_diff[i, j] = frame_diff[i, j - 1]
 
         ### power normalization ###
         attention_map = self.pn(frame_diff, self.m, self.n)

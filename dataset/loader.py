@@ -47,17 +47,26 @@ def load_h5_file(dataset_path, path):
 
 def get_video_loader(use_petrel_backend: bool = True,
                      enable_mc: bool = True,
-                     conf_path: str = None):
+                     conf_path: str = None,
+                     data_root: str = "data/ucf101_1"):
     if petrel_backend_imported and use_petrel_backend:
         _client = Client(conf_path=conf_path, enable_mc=enable_mc)
     else:
         _client = None
 
-    def _loader(video_path, dataset_path="data/hmdb51_1/HMDB51_split1.h5"):
+    def _loader(video_path):
         # if _client is not None and 's3:' in video_path:
         #     video_path = io.BytesIO(_client.get(video_path))
 
         #NOTE: read video from h5 file
+        # find the only h5 file in the directory
+        dataset_path = None
+        for file in os.listdir(data_root):
+            if file.endswith(".h5"):
+                dataset_path = os.path.join(data_root, file)
+        if dataset_path is None:
+            raise ValueError("No h5 file found in the directory")
+
         video_binary = load_h5_file(dataset_path, video_path)
         video_path = io.BytesIO(video_binary)
 
@@ -69,13 +78,14 @@ def get_video_loader(use_petrel_backend: bool = True,
 
 def get_image_loader(use_petrel_backend: bool = True,
                      enable_mc: bool = True,
-                     conf_path: str = None):
+                     conf_path: str = None,
+                     data_root: str = "data/sthsthv2"):
     if petrel_backend_imported and use_petrel_backend:
         _client = Client(conf_path=conf_path, enable_mc=enable_mc)
     else:
         _client = None
 
-    def _loader(frame_path, dataset_path="sthsthv2/sthsthv2.h5"):
+    def _loader(frame_path):
         # if _client is not None and 's3:' in frame_path:
         #     img_bytes = _client.get(frame_path)
         # else:
@@ -83,6 +93,15 @@ def get_image_loader(use_petrel_backend: bool = True,
         #         img_bytes = f.read()
 
         #NOTE: read image from h5 file
+        # find the only h5 file in the directory
+        dataset_path = None
+        for file in os.listdir(data_root):
+            if file.endswith(".h5"):
+                dataset_path = os.path.join(data_root, file)
+                break
+        if dataset_path is None:
+            raise ValueError("No h5 file found in the directory")
+        
         video_binary = load_h5_file(dataset_path, frame_path)
         img_bytes = io.BytesIO(video_binary)
 

@@ -9,12 +9,10 @@ def round_tensor(x, decimals=0):
 
 
 def closest_odd_numbers(num):
-    num = round_tensor(num, decimals=1)
     assert num >= 1, "Number must be greater than or equal to 1, num = " + str(num)
-    base = torch.floor(num).int().item()
+    base = torch.floor(num).int()
 
     lower = base if base % 2 != 0 else base - 1
-    lower = torch.where(base <= num, lower, lower - 2)
     higher = lower + 2
 
     higher_weight = (num - lower) / 2
@@ -79,13 +77,15 @@ class MotionLayer(torch.nn.Module):
         # frame_diff = torch.abs(frame_diff)
 
         ### check if 0 difference, if so duplicate the last non-zero frame difference ###
-        zero_diff = torch.sum(frame_diff == 0.0, dim=(2, 3))
-        for i in range(B):
-            matching_mask = (zero_diff[i] == H * W)
-            matching_indices = torch.nonzero(matching_mask).flatten()
-            for j in matching_indices:
-                if j > 0:
-                    frame_diff[i, j] = frame_diff[i, j - 1]
+        # zero_diff = torch.sum(frame_diff == 0.0, dim=(2, 3))
+        # for i in range(B):
+        #     matching_mask = (zero_diff[i] == H * W)
+        #     matching_indices = torch.nonzero(matching_mask).flatten()
+        #     if len(matching_indices) != 0:
+        #         raise ValueError("Zero difference detected in the input video sequence")
+        #     for j in matching_indices:
+        #         if j > 0:
+        #             frame_diff[i, j] = frame_diff[i, j - 1]
 
         ### power normalization ###
         # norm_attention = attention_map(frame_diff, self.m_1, self.n_1)
