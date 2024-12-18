@@ -190,13 +190,17 @@ class HybridVideoMAE(torch.utils.data.Dataset):
     def __getitem__(self, index):
         try:
             video_name, start_idx, total_frame = self.clips[index]
+            # sample number * sample rate = 16 * 4
             self.skip_length = self.orig_skip_length
+            # sample rate
             self.new_step = self.orig_new_step
             
+            # video loader
             if total_frame < 0:
                 decord_vr = self.video_loader(video_name)
                 duration = len(decord_vr)
 
+                # start_idx, skip_offsets
                 segment_indices, skip_offsets = self._sample_train_indices(
                     duration)
                 frame_id_list = self.get_frame_id_list(duration,
@@ -312,6 +316,11 @@ class HybridVideoMAE(torch.utils.data.Dataset):
 
     def get_frame_id_list(self, duration, indices, skip_offsets):
         frame_id_list = []
+        #NOTE: adjust new sampling rate if duration < skip_length
+        if duration < self.skip_length:
+             step = duration // (self.skip_length // self.new_step)
+             frame_id_list = [i for i in range(0, duration, step)]
+             return frame_id_list
         for seg_ind in indices:
             offset = int(seg_ind)
             for i, _ in enumerate(range(0, self.skip_length, self.new_step)):

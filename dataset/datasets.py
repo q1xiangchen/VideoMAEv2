@@ -326,6 +326,7 @@ class VideoClsDataset(Dataset):
                 else:
                     #NOTE: if the segment is smaller than the clip length
                     # return an empty buffer
+                    print(f"{fname} has a segment smaller than the clip length")
                     return []
             else:
                 if self.mode == 'validation':
