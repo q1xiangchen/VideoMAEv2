@@ -209,7 +209,9 @@ class VideoClsDataset(Dataset):
             raise NameError('mode {} unkown'.format(self.mode))
 
     def _aug_frame(self, buffer, args):
-        #NOTE: first augment will random normalize the video (not applicable in our case)
+        #NOTE: first augment will perform random shearing 
+        # this will cause the video to have static 0s when shearing is applied
+
         # aug_transform = video_transforms.create_random_augment(
         #     input_size=(self.crop_size, self.crop_size),
         #     auto_augment=args.aa,
@@ -218,7 +220,7 @@ class VideoClsDataset(Dataset):
 
         buffer = [transforms.ToPILImage()(frame) for frame in buffer]
         # buffer = aug_transform(buffer)
-        #NOTE: first augment will random normalize the video (not applicable in our case)
+        #NOTE: first augment will perform random shearing  (not applicable in our case)
 
         buffer = [transforms.ToTensor()(img) for img in buffer]
         buffer = torch.stack(buffer)  # T C H W
@@ -230,7 +232,7 @@ class VideoClsDataset(Dataset):
         # T H W C -> C T H W.
         buffer = buffer.permute(3, 0, 1, 2)
 
-        #NOTE: second augment will perform spatial sampling (but maintain the normalization)
+        #NOTE: second augment will perform spatial sampling (but maintain the range)
         # Perform data augmentation.
         scl, asp = (
             [0.08, 1.0],
@@ -277,7 +279,7 @@ class VideoClsDataset(Dataset):
 
         length = len(vr)
         
-
+        #TODO: handle test mode, not sure if need to modify this
         if self.mode == 'test':
             if self.sparse_sample:
                 tick = length / float(self.num_segment)
@@ -317,7 +319,14 @@ class VideoClsDataset(Dataset):
                 # index = np.clip(index, 0, seg_len - 1).astype(np.int64)
 
                 # sample non-repeating frames
-                index = np.linspace(0, seg_len - 1, num=self.clip_len).astype(np.int64)
+                new_sample_rate = seg_len // self.clip_len
+                if new_sample_rate >= 1:
+                    index = np.linspace(0, seg_len - 1, num=self.clip_len)
+                    index = np.clip(index, 0, seg_len - 1).astype(np.int64)
+                else:
+                    #NOTE: if the segment is smaller than the clip length
+                    # return an empty buffer
+                    return []
             else:
                 if self.mode == 'validation':
                     end_idx = (converted_len + seg_len) // 2
@@ -449,6 +458,7 @@ class RawFrameClsDataset(Dataset):
                         sample, total_frame, sample_rate_scale=scale_t)
 
             if args.num_sample > 1:
+                raise NotImplementedError
                 frame_list = []
                 label_list = []
                 index_list = []
@@ -521,15 +531,17 @@ class RawFrameClsDataset(Dataset):
             raise NameError('mode {} unkown'.format(self.mode))
 
     def _aug_frame(self, buffer, args):
-        aug_transform = video_transforms.create_random_augment(
-            input_size=(self.crop_size, self.crop_size),
-            auto_augment=args.aa,
-            interpolation=args.train_interpolation,
-        )
+        # same setup of the VideoClsDataset class
+
+        # aug_transform = video_transforms.create_random_augment(
+        #     input_size=(self.crop_size, self.crop_size),
+        #     auto_augment=args.aa,
+        #     interpolation=args.train_interpolation,
+        # )
 
         buffer = [transforms.ToPILImage()(frame) for frame in buffer]
 
-        buffer = aug_transform(buffer)
+        # buffer = aug_transform(buffer)
 
         buffer = [transforms.ToTensor()(img) for img in buffer]
         buffer = torch.stack(buffer)  # T C H W
@@ -558,17 +570,17 @@ class RawFrameClsDataset(Dataset):
             scale=scl,
             motion_shift=False)
 
-        if self.rand_erase:
-            erase_transform = RandomErasing(
-                args.reprob,
-                mode=args.remode,
-                max_count=args.recount,
-                num_splits=args.recount,
-                device="cpu",
-            )
-            buffer = buffer.permute(1, 0, 2, 3)
-            buffer = erase_transform(buffer)
-            buffer = buffer.permute(1, 0, 2, 3)
+        # if self.rand_erase:
+        #     erase_transform = RandomErasing(
+        #         args.reprob,
+        #         mode=args.remode,
+        #         max_count=args.recount,
+        #         num_splits=args.recount,
+        #         device="cpu",
+        #     )
+        #     buffer = buffer.permute(1, 0, 2, 3)
+        #     buffer = erase_transform(buffer)
+        #     buffer = buffer.permute(1, 0, 2, 3)
 
         return buffer
 
@@ -576,6 +588,7 @@ class RawFrameClsDataset(Dataset):
         """Load video content using Decord"""
         fname = sample
 
+        #TODO: handle test mode, not sure if need to modify this
         if self.mode == 'test':
             tick = num_frames / float(self.num_segment)
             all_index = []
@@ -618,8 +631,13 @@ class RawFrameClsDataset(Dataset):
                     np.sort(
                         np.random.randint(num_frames, size=self.num_segment)))
         else:
-            all_index = [0] * (self.num_segment - num_frames) + list(
-                range(num_frames))
+            # all_index = [0] * (self.num_segment - num_frames) + list(
+            #     range(num_frames))
+            #NOTE: if the segment is smaller than the clip length
+                    # return an empty buffer
+            all_index = np.array([])
+            return buffer
+
         all_index = list(np.array(all_index) + self.start_idx)
         imgs = []
         for idx in all_index:

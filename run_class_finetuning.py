@@ -532,6 +532,7 @@ def main(args, ds_init):
         init_scale=args.init_scale,
         with_cp=args.with_checkpoint,
         motion_layer=args.motion_layer,
+        penalty_weight=args.penalty_weight,
     )
 
     patch_size = model.patch_embed.patch_size

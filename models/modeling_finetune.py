@@ -17,6 +17,7 @@ from timm.models.registry import register_model
 from .motion_modulation import MotionLayer
 from .motion_pn import MotionPnLayer
 from .motion_raw_prompt import MotionRawLayer
+from .motion_smooth import MotionSmoothLayer
 
 
 def _cfg(url='', **kwargs):
@@ -418,6 +419,9 @@ class VisionTransformer(nn.Module):
             elif motion_layer == "zero_param":
                 print("*" * 20, "Using ZeroParam layer", "*" * 20)
                 self.motion_layer = MotionRawLayer()
+            elif motion_layer == "three_param":
+                print("*" * 20, "Using ThreeParam layer", "*" * 20)
+                self.motion_layer = MotionSmoothLayer()
             else:
                 print("*" * 20, "Using Motion layer", "*" * 20)
                 self.motion_layer = MotionLayer(motion_layer)

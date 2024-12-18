@@ -35,7 +35,7 @@ def reverse_rearrange_tensor(input_tensor, order):
     return input_tensor.permute(["BTCHW".index(dim) for dim in order])
 
 class MotionPnLayer(torch.nn.Module):
-    def __init__(self, exp_name = "", penalty_weight=1.0):
+    def __init__(self, penalty_weight):
         super(MotionPnLayer, self).__init__()
         # default configs
         self.input_permutation = "BCTHW"   # Input permutation from video reader
