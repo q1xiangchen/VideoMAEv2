@@ -65,10 +65,10 @@ def get_video_loader(use_petrel_backend: bool = True,
             if file.endswith(".h5"):
                 dataset_path = os.path.join(data_root, file)
         if dataset_path is None:
-            raise ValueError("No h5 file found in the directory")
-
-        video_binary = load_h5_file(dataset_path, video_path)
-        video_path = io.BytesIO(video_binary)
+            video_path = io.BytesIO(_client.get(video_path))
+        else:
+            video_binary = load_h5_file(dataset_path, video_path)
+            video_path = io.BytesIO(video_binary)
 
         vr = VideoReader(video_path, num_threads=1, ctx=cpu(0))
         return vr
