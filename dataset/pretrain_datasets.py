@@ -214,7 +214,7 @@ class HybridVideoMAE(torch.utils.data.Dataset):
 
             else:
                 # ssv2 & ava & other rawframe dataset
-                if 'SomethingV2' in video_name:
+                if 'sthv2' in video_name:
                     self.new_step = 2
                     self.skip_length = self.new_length * self.new_step
                     fname_tmpl = self.ssv2_fname_tmpl
@@ -316,11 +316,18 @@ class HybridVideoMAE(torch.utils.data.Dataset):
 
     def get_frame_id_list(self, duration, indices, skip_offsets):
         frame_id_list = []
-        #NOTE: adjust new sampling rate if duration < skip_length
+        # #NOTE: adjust new sampling rate if duration < skip_length
         if duration < self.skip_length:
-             step = duration // (self.skip_length // self.new_step)
-             frame_id_list = [i for i in range(0, duration, step)]
-             return frame_id_list
+             # sample non-repeating frames
+             new_sample_rate = duration // self.new_length
+             if new_sample_rate >= 1:
+                 index = np.linspace(0, duration - 1, num=self.new_length)
+                 index = np.clip(index, 0, duration - 1).astype(np.int64)
+                 return index
+             else:
+                 #NOTE: if the segment is smaller than the clip length
+                 raise (
+                    RuntimeError("a segment smaller than the clip length"))
         for seg_ind in indices:
             offset = int(seg_ind)
             for i, _ in enumerate(range(0, self.skip_length, self.new_step)):
