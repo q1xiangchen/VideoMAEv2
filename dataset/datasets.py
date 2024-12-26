@@ -217,10 +217,22 @@ class VideoClsDataset(Dataset):
         #     auto_augment=args.aa,
         #     interpolation=args.train_interpolation,
         # )
-
         buffer = [transforms.ToPILImage()(frame) for frame in buffer]
+        
+        # save the buffer
+        # for i, img in enumerate(buffer):
+        #     img.save(f"fig/input_buffer_{i}.png")
+
         # buffer = aug_transform(buffer)
         #NOTE: first augment will perform random shearing  (not applicable in our case)
+        # save the buffer
+        # for i, img in enumerate(buffer):
+        #     img.save(f"fig/step1_{i}.png")
+
+        # resize to 224x224
+        # resize = video_transforms.Resize(
+        #     size=(self.crop_size, self.crop_size), interpolation='bilinear')
+        # buffer = resize(buffer)
 
         buffer = [transforms.ToTensor()(img) for img in buffer]
         buffer = torch.stack(buffer)  # T C H W
@@ -252,6 +264,16 @@ class VideoClsDataset(Dataset):
             scale=scl,
             motion_shift=False)
 
+        # save the buffer
+        # for i, img in enumerate(buffer.permute(1, 0, 2, 3)):
+        #     # normalize back to 0-255
+        #     img = img.permute(1, 2, 0)
+        #     img = img * torch.tensor([0.229, 0.224, 0.225]) + torch.tensor([0.485, 0.456, 0.406])
+        #     img = img.permute(2, 0, 1) 
+                       
+        #     img = transforms.ToPILImage()(img)
+        #     img.save(f"fig/step3_{i}.png")
+
         #NOTE: third augment will perform random erasing (not applicable in our case)
         # if self.rand_erase:
         #     erase_transform = RandomErasing(
@@ -266,6 +288,16 @@ class VideoClsDataset(Dataset):
         #     buffer = buffer.permute(1, 0, 2, 3)  # T C H W -> C T H W
         #NOTE: third augment will perform random erasing (not applicable in our case)
 
+        # for i, img in enumerate(buffer.permute(1, 0, 2, 3)):
+        #     # normalize back to 0-255
+        #     img = img.permute(1, 2, 0)
+        #     img = img * torch.tensor([0.229, 0.224, 0.225]) + torch.tensor([0.485, 0.456, 0.406])
+        #     img = img.permute(2, 0, 1) 
+                       
+        #     img = transforms.ToPILImage()(img)
+        #     img.save(f"fig/step4_{i}.png")
+
+        # import pdb; pdb.set_trace()
         return buffer
 
     def load_video(self, sample, sample_rate_scale=1):

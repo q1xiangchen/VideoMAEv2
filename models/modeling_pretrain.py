@@ -13,6 +13,9 @@ import torch.utils.checkpoint as cp
 from timm.models.layers import trunc_normal_ as __call_trunc_normal_
 from timm.models.registry import register_model
 from .motion_modulation import MotionLayer
+from .motion_pn import MotionPnLayer
+from .motion_raw_prompt import MotionRawLayer
+from .motion_smooth import MotionSmoothLayer
 
 from .modeling_finetune import (
     Block,
@@ -270,6 +273,7 @@ class PretrainVisionTransformer(nn.Module):
         all_frames=16,
         cos_attn=False,
         motion_layer="baseline",
+        penalty_weight=1.0
     ):
         super().__init__()
         self.encoder = PretrainVisionTransformerEncoder(
@@ -326,7 +330,18 @@ class PretrainVisionTransformer(nn.Module):
         # print("-"*30," motion_layer: ", motion_layer)
         self.motion_layer = None
         if motion_layer != "baseline":
-            self.motion_layer = MotionLayer()
+            if motion_layer == "motion_pn":
+                print("*" * 20, "Using MotionPN layer", "*" * 20)
+                self.motion_layer = MotionPnLayer(penalty_weight)
+            elif motion_layer == "zero_param":
+                print("*" * 20, "Using ZeroParam layer", "*" * 20)
+                self.motion_layer = MotionRawLayer()
+            elif motion_layer == "three_param":
+                print("*" * 20, "Using ThreeParam layer", "*" * 20)
+                self.motion_layer = MotionSmoothLayer()
+            else:
+                print("*" * 20, "Using Motion layer", "*" * 20)
+                self.motion_layer = MotionLayer(motion_layer)
 
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):

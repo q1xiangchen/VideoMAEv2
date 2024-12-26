@@ -38,6 +38,8 @@ def get_args():
     parser.add_argument('--epochs', default=300, type=int)
     parser.add_argument('--save_ckpt_freq', default=50, type=int)
     parser.add_argument('--motion_layer', default="baseline", type=str)
+    parser.add_argument('--penalty_weight', default=1.0, type=float)
+    parser.add_argument('--end_to_end', action='store_true', default=False)
 
     # Model parameters
     parser.add_argument(
@@ -264,7 +266,9 @@ def get_model(args):
         tubelet_size=args.tubelet_size,
         decoder_depth=args.decoder_depth,
         with_cp=args.with_checkpoint,
-        motion_layer=args.motion_layer)
+        motion_layer=args.motion_layer,
+        penalty_weight=args.penalty_weight,
+    )
 
     if version.parse(torch.__version__) > version.parse('1.13.1'):
         torch.set_float32_matmul_precision('high')
