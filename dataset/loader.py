@@ -45,35 +45,77 @@ def load_h5_file(dataset_path, path):
             raise ValueError('Unknown file type: {}'.format(path))
         return rtn
 
+
 def get_video_loader(use_petrel_backend: bool = True,
                      enable_mc: bool = True,
                      conf_path: str = None,
-                     data_root: str = "data/ucf101_1"):
+                     data_root: str = ""):
     if petrel_backend_imported and use_petrel_backend:
         _client = Client(conf_path=conf_path, enable_mc=enable_mc)
     else:
         _client = None
 
-    def _loader(video_path):
-        # if _client is not None and 's3:' in video_path:
-        #     video_path = io.BytesIO(_client.get(video_path))
+    if data_root:
+        def _loader(video_path):
+            # if _client is not None and 's3:' in video_path:
+            #     video_path = io.BytesIO(_client.get(video_path))
 
-        #NOTE: read video from h5 file
-        # find the only h5 file in the directory
-        dataset_path = None
-        for file in os.listdir(data_root):
-            if file.endswith(".h5"):
-                dataset_path = os.path.join(data_root, file)
-        if dataset_path is None:
-            video_path = io.BytesIO(_client.get(video_path))
-        else:
-            video_binary = load_h5_file(dataset_path, video_path)
-            video_path = io.BytesIO(video_binary)
+            #NOTE: read video from h5 file
+            # find the only h5 file in the directory
+            dataset_path = None
+            for file in os.listdir(data_root):
+                if file.endswith(".h5"):
+                    dataset_path = os.path.join(data_root, file)
+            if dataset_path is None:
+                video_path = io.BytesIO(_client.get(video_path))
+            elif ".h5" in dataset_path:
+                video_binary = load_h5_file(dataset_path, video_path)
+                video_path = io.BytesIO(video_binary)
+            else:
+                pass
 
-        vr = VideoReader(video_path, num_threads=1, ctx=cpu(0))
-        return vr
+            vr = VideoReader(video_path, num_threads=1, ctx=cpu(0))
+            return vr
+    else:
+        def _loader(video_path):
+            if _client is not None and 's3:' in video_path:
+                video_path = io.BytesIO(_client.get(video_path))
+
+            vr = VideoReader(video_path, num_threads=1, ctx=cpu(0))
+            return vr
 
     return _loader
+
+
+# def get_video_loader(use_petrel_backend: bool = True,
+#                      enable_mc: bool = True,
+#                      conf_path: str = None,
+#                      data_root: str = "data/ucf101_1"):
+#     if petrel_backend_imported and use_petrel_backend:
+#         _client = Client(conf_path=conf_path, enable_mc=enable_mc)
+#     else:
+#         _client = None
+
+#     def _loader(video_path):
+#         # if _client is not None and 's3:' in video_path:
+#         #     video_path = io.BytesIO(_client.get(video_path))
+
+#         #NOTE: read video from h5 file
+#         # find the only h5 file in the directory
+#         dataset_path = None
+#         for file in os.listdir(data_root):
+#             if file.endswith(".h5"):
+#                 dataset_path = os.path.join(data_root, file)
+#         if dataset_path is None:
+#             video_path = io.BytesIO(_client.get(video_path))
+#         else:
+#             video_binary = load_h5_file(dataset_path, video_path)
+#             video_path = io.BytesIO(video_binary)
+
+#         vr = VideoReader(video_path, num_threads=1, ctx=cpu(0))
+#         return vr
+
+#     return _loader
 
 
 def get_image_loader(use_petrel_backend: bool = True,
