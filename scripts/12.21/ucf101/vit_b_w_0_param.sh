@@ -5,9 +5,9 @@ export MASTER_PORT=$((12000 + $RANDOM % 20000))
 export OMP_NUM_THREADS=1
 
 
-OUTPUT_DIR='./results/ucf101/vit_b_sthv2_pt_200e_ft_w_0_param'
+OUTPUT_DIR='./results/ucf101/vit_b_sthv2_pt_ft_w_0_param'
 DATA_PATH='./data/ucf101_1'
-MODEL_PATH='./model_zoo/PATH_TO_PT_MODEL'
+MODEL_PATH='./model_zoo/vit_b_sthv2_pt_w_0_param.pth'
 
 PARTITION=video
 # 8 for 1 node, 16 for 2 node, etc.

@@ -47,15 +47,38 @@ class MotionLayer(torch.nn.Module):
         self.input_color_order = "RGB"     # Input format from video reader
         self.gray_scale = {"B": 0.114, "G": 0.587, "R": 0.299}
 
-        self.h = nn.Parameter(torch.zeros(1))
-        self.w = nn.Parameter(torch.zeros(1))
-        self.t = nn.Parameter(torch.zeros(1))
+        grad_state = False if exp_name.split("_")[-1] == "fixed" else True
+        temporal_map = {2: 0.26391, 
+                        4: 0.13863, 
+                        8: 0.013353, 
+                        12: -0.10116}
+        t_value = temporal_map[int(exp_name.split("_")[-3])]
 
-        self.m = nn.Parameter(torch.zeros(1)+1e-1)
+        # 150: -0.007
+        # 10: 0.03169
+        spatial_map = {150: -0.007,
+                        112: 0.00009,
+                        50: 0.012672,
+                        20: 0.023737,
+                        10: 0.03169,
+                        7: 0.03588,
+                        3: 0.04705}
+        s_value = spatial_map[int(exp_name.split("_")[-4])]
+        self.h = nn.Parameter(torch.tensor(s_value), requires_grad=grad_state)
+        self.w = nn.Parameter(torch.tensor(s_value), requires_grad=grad_state)
+        self.t = nn.Parameter(torch.tensor(t_value), requires_grad=grad_state)
+
+        # self.h = nn.Parameter(torch.zeros(1), requires_grad=False)
+        # self.w = nn.Parameter(torch.zeros(1), requires_grad=False)
+        # self.t = nn.Parameter(torch.zeros(1), requires_grad=False)
+
+        self.m = nn.Parameter(torch.zeros(1) + 1e-1)
         self.n = nn.Parameter(torch.zeros(1))
 
         self.input_mean = [0.485, 0.456, 0.406]
         self.input_std = [0.229, 0.224, 0.225]
+
+        self.slope = int(exp_name.split("_")[-2])
         
     def forward(self, video_seq):
         video_seq = rearrange_tensor(video_seq, self.input_permutation)
@@ -98,9 +121,9 @@ class MotionLayer(torch.nn.Module):
         ratio_h = sum_h.div(count_h + 1e-6).to(video_seq.dtype)
         ratio_w = sum_w.div(count_w + 1e-6).to(video_seq.dtype)
 
-        height_window = reciprocal_auto(self.h, H)
-        width_window = reciprocal_auto(self.w, W)
-        temporal_window = reciprocal_auto(self.t, T - 1)
+        height_window = reciprocal_auto(self.h, H, self.slope)
+        width_window = reciprocal_auto(self.w, W, self.slope)
+        temporal_window = reciprocal_auto(self.t, T - 1, self.slope)
 
         ### spatial smoothing ###
         smoothed_ratio_h = torch.zeros_like(ratio_h, device=ratio_h.device)
@@ -134,7 +157,7 @@ def reciprocal_auto(param, bound, slope=100):
     - bound: the upper bound of the output
     - slope: the slope of the sigmoid function
     """
-    slope = 10 if bound <= 32 else slope
+    slope = slope/10 if bound <= 32 else slope
     
     window_mapping = (1 - bound) / (1 + torch.exp(-slope * param)) + bound
     return window_mapping

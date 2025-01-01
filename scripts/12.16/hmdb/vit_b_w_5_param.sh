@@ -5,7 +5,7 @@ export MASTER_PORT=$((12000 + $RANDOM % 20000))
 export OMP_NUM_THREADS=1
 
 
-OUTPUT_DIR='./results/hmdb51/vit_b_hybrid_pt_1200e_hmdb51_1_ft_w_5_param'
+OUTPUT_DIR='./results_aug/hmdb51/vit_b_hybrid_pt_1200e_hmdb51_1_ft_w_5_param_234'
 DATA_PATH='./data/hmdb51_1'
 MODEL_PATH='./model_zoo/vit_b_hybrid_pt_1200e.bin'
 

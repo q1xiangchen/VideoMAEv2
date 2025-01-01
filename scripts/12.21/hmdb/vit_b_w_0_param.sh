@@ -5,9 +5,9 @@ export MASTER_PORT=$((12000 + $RANDOM % 20000))
 export OMP_NUM_THREADS=1
 
 
-OUTPUT_DIR='./results/hmdb51/vit_b_sthv2_pt_200e_ft_w_0_param'
+OUTPUT_DIR='./results/hmdb51/vit_b_sthv2_pt_ft_w_0_param_0101'
 DATA_PATH='./data/hmdb51_1'
-MODEL_PATH='./model_zoo/PATH_TO_PT_MODEL'
+MODEL_PATH='./model_zoo/vit_b_sthv2_pt_w_0_param.pth'
 
 PARTITION=video
 # 8 for 1 node, 16 for 2 node, etc.
@@ -34,17 +34,15 @@ torchrun --nproc_per_node=${GPUS_PER_NODE} \
         --short_side_size 224 \
         --save_ckpt_freq 10 \
         --num_frames 16 \
-        --sampling_rate 2 \
         --opt adamw \
-        --lr 0.0005 \
-        --layer_decay 0.9 \
+        --lr 2e-3 \
         --num_workers 10 \
+        --layer_decay 0.65 \
         --opt_betas 0.9 0.999 \
         --weight_decay 0.05 \
-        --epochs 40 \
-        --drop_path 0.35 \
-        --head_drop_rate 0.5 \
-        --test_num_segment 5 \
+        --epochs 25 \
+        --dist_eval \
+        --test_num_segment 2 \
         --test_num_crop 3 \
         --motion_layer zero_param \
         --dist_eval  \

@@ -47,6 +47,7 @@ class MotionRawLayer(torch.nn.Module):
 
         ### frame difference ###
         frame_diff = grayscale_video_seq[:,1:] - grayscale_video_seq[:,:-1]
+        # frame_diff = frame_diff.clamp(-1, 1)
 
         ### min-max norm ###
         norm_attention = ((frame_diff + 1) / 2).unsqueeze(2)

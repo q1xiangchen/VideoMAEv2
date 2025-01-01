@@ -155,3 +155,7 @@ scripts/ours
 scripts/ucf101
 scripts/w_*
 results/*
+results_aug/*
+fig/*
+grid_search_results/*
+scripts/*
