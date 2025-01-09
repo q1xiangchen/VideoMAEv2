@@ -48,7 +48,8 @@ class MotionLayer(torch.nn.Module):
         self.gray_scale = {"B": 0.114, "G": 0.587, "R": 0.299}
 
         grad_state = False if exp_name.split("_")[-1] == "fixed" else True
-        temporal_map = {2: 0.26391, 
+        temporal_map = {0: 0.0,
+                        2: 0.26391, 
                         4: 0.13863, 
                         8: 0.013353, 
                         12: -0.10116}
@@ -62,7 +63,8 @@ class MotionLayer(torch.nn.Module):
                         20: 0.023737,
                         10: 0.03169,
                         7: 0.03588,
-                        3: 0.04705}
+                        3: 0.04705,
+                        0: 0.0}
         s_value = spatial_map[int(exp_name.split("_")[-4])]
         self.h = nn.Parameter(torch.tensor(s_value), requires_grad=grad_state)
         self.w = nn.Parameter(torch.tensor(s_value), requires_grad=grad_state)

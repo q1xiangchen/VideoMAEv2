@@ -159,3 +159,8 @@ results_aug/*
 fig/*
 grid_search_results/*
 scripts/*
+finetune_results/*
+finetune_scripts/cfg
+finetune_scripts/job
+finetune_scripts/vit*
+new_results/*

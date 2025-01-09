@@ -117,7 +117,6 @@ class VideoClsDataset(Dataset):
 
             #NOTE: for our experiments, we only use 1 sample
             if args.num_sample > 1:
-                raise NotImplementedError
                 frame_list = []
                 label_list = []
                 index_list = []
