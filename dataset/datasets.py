@@ -490,7 +490,6 @@ class RawFrameClsDataset(Dataset):
                         sample, total_frame, sample_rate_scale=scale_t)
 
             if args.num_sample > 1:
-                raise NotImplementedError
                 frame_list = []
                 label_list = []
                 index_list = []
