@@ -211,19 +211,20 @@ class VideoClsDataset(Dataset):
         #NOTE: first augment will perform random shearing 
         # this will cause the video to have static 0s when shearing is applied
 
-        # aug_transform = video_transforms.create_random_augment(
-        #     input_size=(self.crop_size, self.crop_size),
-        #     auto_augment=args.aa,
-        #     interpolation=args.train_interpolation,
-        # )
+        aug_transform = video_transforms.create_random_augment(
+            input_size=(self.crop_size, self.crop_size),
+            auto_augment=args.aa,
+            interpolation=args.train_interpolation,
+        )
         buffer = [transforms.ToPILImage()(frame) for frame in buffer]
         
         # save the buffer
         # for i, img in enumerate(buffer):
         #     img.save(f"fig/input_buffer_{i}.png")
 
-        # buffer = aug_transform(buffer)
+        buffer = aug_transform(buffer)
         #NOTE: first augment will perform random shearing  (not applicable in our case)
+
         # save the buffer
         # for i, img in enumerate(buffer):
         #     img.save(f"fig/step1_{i}.png")
@@ -274,17 +275,17 @@ class VideoClsDataset(Dataset):
         #     img.save(f"fig/step3_{i}.png")
 
         #NOTE: third augment will perform random erasing (not applicable in our case)
-        # if self.rand_erase:
-        #     erase_transform = RandomErasing(
-        #         args.reprob,
-        #         mode=args.remode,
-        #         max_count=args.recount,
-        #         num_splits=args.recount,
-        #         device="cpu",
-        #     )
-        #     buffer = buffer.permute(1, 0, 2, 3)  # C T H W -> T C H W
-        #     buffer = erase_transform(buffer)
-        #     buffer = buffer.permute(1, 0, 2, 3)  # T C H W -> C T H W
+        if self.rand_erase:
+            erase_transform = RandomErasing(
+                args.reprob,
+                mode=args.remode,
+                max_count=args.recount,
+                num_splits=args.recount,
+                device="cpu",
+            )
+            buffer = buffer.permute(1, 0, 2, 3)  # C T H W -> T C H W
+            buffer = erase_transform(buffer)
+            buffer = buffer.permute(1, 0, 2, 3)  # T C H W -> C T H W
         #NOTE: third augment will perform random erasing (not applicable in our case)
 
         # for i, img in enumerate(buffer.permute(1, 0, 2, 3)):
@@ -323,11 +324,13 @@ class VideoClsDataset(Dataset):
                     all_index.extend(tmp_index)
                 all_index = list(np.sort(np.array(all_index)))
             else:
-                all_index = [
-                    x for x in range(0, length, self.frame_sample_rate)
-                ]
-                while len(all_index) < self.clip_len:
-                    all_index.append(all_index[-1])
+                # all_index = [
+                #     x for x in range(0, length, self.frame_sample_rate)
+                # ]
+                # while len(all_index) < self.clip_len:
+                #     all_index.append(all_index[-1])
+                all_index = np.linspace(0, length - 1, num=self.clip_len)
+                all_index = np.clip(all_index, 0, length - 1).astype(np.int64)
 
             vr.seek(0)
             buffer = vr.get_batch(all_index).asnumpy()

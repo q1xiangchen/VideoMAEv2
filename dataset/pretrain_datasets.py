@@ -317,16 +317,16 @@ class HybridVideoMAE(torch.utils.data.Dataset):
         frame_id_list = []
         # #NOTE: adjust new sampling rate if duration < skip_length
         if duration < self.skip_length:
-             # sample non-repeating frames
-             new_sample_rate = duration // self.new_length
-             if new_sample_rate >= 1:
-                 index = np.linspace(0, duration - 1, num=self.new_length)
-                 index = np.clip(index, 0, duration - 1).astype(np.int64)
-                 return index
-             else:
-                 #NOTE: if the segment is smaller than the clip length
-                 raise (
-                    RuntimeError("a segment smaller than the clip length"))
+            # sample non-repeating frames
+            new_sample_rate = duration // self.new_length
+            if new_sample_rate >= 1:
+                index = np.linspace(0, duration - 1, num=self.new_length)
+                index = np.clip(index, 0, duration - 1).astype(np.int64)
+                return index
+            else:
+                #NOTE: if the segment is smaller than the clip length
+                raise (
+                RuntimeError("a segment smaller than the clip length"))
         for seg_ind in indices:
             offset = int(seg_ind)
             for i, _ in enumerate(range(0, self.skip_length, self.new_step)):

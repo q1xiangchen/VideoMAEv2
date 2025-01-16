@@ -161,7 +161,6 @@ def build_dataset(is_train, test_mode, args):
             filename_tmpl=args.fname_tmpl,
             start_idx=args.start_idx,
             args=args)
-
         nb_classes = 174
 
     elif args.data_set == 'UCF101':

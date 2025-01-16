@@ -4,6 +4,7 @@ import os
 
 import numpy as np
 import torch
+import random
 from functools import partial
 from run_mae_pretraining import get_args, get_model
 
@@ -250,6 +251,11 @@ def visualize_reconstruction(args):
 
 
 if __name__ == '__main__':
+    seed = 7234
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+
     checkpoint_dict = {
         "baseline": "model_zoo/vit_b_sthv2_800e_base.pth",
         "finetune_w_layer_10_4_100_fixed": "model_zoo/vit_b_sthv2_800e_fix_h10_w10_t4_checkpoint-199.pth",

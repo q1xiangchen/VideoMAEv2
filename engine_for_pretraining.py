@@ -64,56 +64,33 @@ def train_one_epoch(model: torch.nn.Module,
             device, non_blocking=True).flatten(1).to(torch.bool)
 
         with torch.no_grad():
-            # calculate the predict label
-            mean = torch.as_tensor(IMAGENET_DEFAULT_MEAN).to(device)[None, :,
-                                                                     None,
-                                                                     None,
-                                                                     None]
-            std = torch.as_tensor(IMAGENET_DEFAULT_STD).to(device)[None, :,
-                                                                   None, None,
-                                                                   None]
-            unnorm_images = images * std + mean  # in [0, 1]
-
-            if unnorm_images.shape[2] == 17:
-                unnorm_images = unnorm_images[:, :, 1:, :, :]
-
-            if normlize_target:
-                images_squeeze = rearrange(
-                    unnorm_images,
-                    'b c (t p0) (h p1) (w p2) -> b (t h w) (p0 p1 p2) c',
-                    p0=2,
-                    p1=patch_size,
-                    p2=patch_size)
-                images_norm = (images_squeeze - images_squeeze.mean(
-                    dim=-2, keepdim=True)) / (
-                        images_squeeze.var(
-                            dim=-2, unbiased=True, keepdim=True).sqrt() + 1e-6)
-                images_patch = rearrange(images_norm, 'b n p c -> b n (p c)')
-            else:
-                images_patch = rearrange(
-                    unnorm_images,
-                    'b c (t p0) (h p1) (w p2) -> b (t h w) (p0 p1 p2 c)',
-                    p0=2,
-                    p1=patch_size,
-                    p2=patch_size)
-
-            B, N, C = images_patch.shape
-            labels = images_patch[~decode_masked_pos].reshape(B, -1, C)
+            if "module.motion_layer.h" not in model.state_dict().keys():
+                images_patch = get_norm_patches(images, normlize_target, patch_size, device, motion_prompt=False)
+                B, N, C = images_patch.shape
+                labels = images_patch[~decode_masked_pos].reshape(B, -1, C)
 
         if loss_scaler is None:
-            outputs, layer_loss = model(images, bool_masked_pos, decode_masked_pos)
+            outputs, motion_prompt = model(images, bool_masked_pos, decode_masked_pos)
+            if motion_prompt is not None:
+                images_patch = get_norm_patches(motion_prompt, normlize_target, patch_size, device, motion_prompt=True)
+                B, N, C = images_patch.shape
+                labels = images_patch[~decode_masked_pos].reshape(B, -1, C)
             loss = (outputs - labels)**2
             loss = loss.mean(dim=-1)
             cal_loss_mask = bool_masked_pos[~decode_masked_pos].reshape(B, -1)
-            loss = (loss * cal_loss_mask).sum() / cal_loss_mask.sum() + layer_loss
+            loss = (loss * cal_loss_mask).sum() / cal_loss_mask.sum()
         else:
             with torch.cuda.amp.autocast():
-                outputs, layer_loss = model(images, bool_masked_pos, decode_masked_pos)
+                outputs, motion_prompt = model(images, bool_masked_pos, decode_masked_pos)
+                if motion_prompt is not None:
+                    images_patch = get_norm_patches(motion_prompt, normlize_target, patch_size, device, motion_prompt=True)
+                    B, N, C = images_patch.shape
+                    labels = images_patch[~decode_masked_pos].reshape(B, -1, C)
                 loss = (outputs - labels)**2
                 loss = loss.mean(dim=-1)
                 cal_loss_mask = bool_masked_pos[~decode_masked_pos].reshape(
                     B, -1)
-                loss = (loss * cal_loss_mask).sum() / cal_loss_mask.sum() + layer_loss
+                loss = (loss * cal_loss_mask).sum() / cal_loss_mask.sum()
 
         loss_value = loss.item()
 
@@ -179,3 +156,40 @@ def train_one_epoch(model: torch.nn.Module,
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
+
+
+def get_norm_patches(images, normlize_target, patch_size, device, motion_prompt=False):
+    with torch.no_grad():
+        mean = torch.as_tensor(IMAGENET_DEFAULT_MEAN).to(device)[None, :,
+                                                                None,
+                                                                None,
+                                                                None]
+        std = torch.as_tensor(IMAGENET_DEFAULT_STD).to(device)[None, :,
+                                                            None, None,
+                                                            None]
+        unnorm_images = images * std + mean  # in [0, 1]
+
+        if unnorm_images.shape[2] == 17:
+            unnorm_images = unnorm_images[:, :, 1:, :, :]
+
+        if normlize_target:
+            images_squeeze = rearrange(
+                unnorm_images,
+                'b c (t p0) (h p1) (w p2) -> b (t h w) (p0 p1 p2) c',
+                p0=2,
+                p1=patch_size,
+                p2=patch_size)
+            images_norm = (images_squeeze - images_squeeze.mean(
+                dim=-2, keepdim=True)) / (
+                    images_squeeze.var(
+                        dim=-2, unbiased=True, keepdim=True).sqrt() + 1e-6)
+            images_patch = rearrange(images_norm, 'b n p c -> b n (p c)')
+        else:
+            images_patch = rearrange(
+                unnorm_images,
+                'b c (t p0) (h p1) (w p2) -> b (t h w) (p0 p1 p2 c)',
+                p0=2,
+                p1=patch_size,
+                p2=patch_size)
+
+    return images_patch

@@ -37,5 +37,5 @@ torchrun --nproc_per_node=${GPUS_PER_NODE} \
         --epochs 300 \
         --log_dir ${OUTPUT_DIR} \
         --output_dir ${OUTPUT_DIR} \
-        --motion_layer finetune_w_layer_10_4_100_fixed \
-        --finetune model_zoo/vit_b_sthv2_800e_fix_h10_w10_t4_checkpoint-199.pth \
+        --motion_layer baseline \
+        --finetune model_zoo/vit_b_hybrid_pt_1200e.bin \

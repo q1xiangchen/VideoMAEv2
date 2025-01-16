@@ -84,7 +84,6 @@ class MotionLayer(torch.nn.Module):
         
     def forward(self, video_seq):
         video_seq = rearrange_tensor(video_seq, self.input_permutation)
-        loss = 0
         
         # normalize the input tensor back to [0, 1]
         input_std = torch.tensor(self.input_std).view(1, 1, 3, 1, 1).to(video_seq.device).to(video_seq.dtype)
@@ -111,9 +110,6 @@ class MotionLayer(torch.nn.Module):
         #     for j in matching_indices:
         #         if j > 0:
         #             frame_diff[i, j] = frame_diff[i, j - 1]
-
-        ### power normalization ###
-        # norm_attention = attention_map(frame_diff, self.m_1, self.n_1)
 
         ### frame summations / counts ###
         sum_h = torch.sum(frame_diff, dim=2)
@@ -146,7 +142,7 @@ class MotionLayer(torch.nn.Module):
         norm_attention = attention_map(smoothed_outers, self.m, self.n).unsqueeze(2)
         pad_norm_attention = norm_attention.repeat(1, 1, 3, 1, 1)        
 
-        return reverse_rearrange_tensor((pad_norm_attention * video_seq[:,1:]), self.input_permutation), loss
+        return reverse_rearrange_tensor((pad_norm_attention * video_seq[:,1:]), self.input_permutation)
 
 
 # sigmoid inverse function
