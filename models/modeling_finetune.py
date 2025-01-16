@@ -479,18 +479,14 @@ class VisionTransformer(nn.Module):
             return self.norm(x[:, 0])
 
     def forward(self, x):
-        layer_loss = 0
         if self.motion_layer is not None:
-            x, layer_loss = self.motion_layer(x)
+            x = self.motion_layer(x)
 
         x = self.forward_features(x)
         x = self.head_dropout(x)
         x = self.head(x)
 
-        if self.training:
-            return x, layer_loss
-        else:
-            return x
+        return x
 
 
 @register_model
