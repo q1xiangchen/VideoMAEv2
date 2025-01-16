@@ -176,7 +176,7 @@ class HybridVideoMAE(torch.utils.data.Dataset):
         self.orig_new_step = new_step
         self.orig_skip_length = self.skip_length
         
-        self.video_loader = get_video_loader()
+        self.video_loader = get_video_loader(data_root="data/hmdb51_1" if "decoder_samples" in setting else "")
         self.image_loader = get_image_loader()
 
         if not self.lazy_init:
@@ -228,7 +228,6 @@ class HybridVideoMAE(torch.utils.data.Dataset):
                 frame_id_list = self.get_frame_id_list(total_frame,
                                                        segment_indices,
                                                        skip_offsets)
-
                 images = []
                 for idx in frame_id_list:
                     frame_fname = os.path.join(

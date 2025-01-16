@@ -164,3 +164,4 @@ finetune_scripts/cfg
 finetune_scripts/job
 finetune_scripts/vit*
 new_results/*
+visual/*

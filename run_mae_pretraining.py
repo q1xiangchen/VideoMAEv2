@@ -340,10 +340,15 @@ def main(args):
 
         print("Load ckpt from %s" % args.finetune)
         checkpoint_model = None
-        for model_key in ['model', 'module']:
+        for model_key in ['model', 'module', 'state_dict']:
             if model_key in checkpoint:
                 checkpoint_model = checkpoint[model_key]
                 print("Load state_dict by model_key = %s" % model_key)
+                # replace the key name of checkpoint_model
+                checkpoint_model = {
+                    ".".join(k.split(".")[1:]) if "_orig_mod" in k else k: v
+                    for k, v in checkpoint_model.items()
+                    }
                 break
         if checkpoint_model is None:
             checkpoint_model = checkpoint
